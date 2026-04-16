@@ -15,7 +15,7 @@ fig.suptitle('Twiddle Optimization: Error and Parameter Evolution',
 
 ax1.plot(laps, errors, marker='o', color='#d62728',
          linewidth=2, label='Average CTE')
-ax1.set_ylabel('Average Error (|e|)', fontsize=12)
+ax1.set_ylabel('Average Error (|cte|)', fontsize=12)
 ax1.grid(True, linestyle='--', alpha=0.7)
 ax1.legend(loc='upper right')
 ax1.set_title('Cross-Track Error Minimization', fontsize=12)

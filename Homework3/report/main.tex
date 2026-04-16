@@ -132,13 +132,15 @@ initialize the local search, the Twiddle step sizes were set to $\Delta p_p = 0.
 During the first lap, the system operated strictly with these parameters to establish a performance
 baseline, yielding an average absolute CTE of $J_{baseline} = 0.1716$.
 
-\subsection{Optimization trajectory}
+\subsection{Analysis of convergence}
 
 Following the initial lap, the descent algorithm activated. The Table \ref{tab:optimization} illustrates
 the parameter space exploration and the corresponding reduction in the objective function $J$ over time.
 
 \begin{table}
     \centering
+    \caption{Evolution of PD parameters and average error per lap via Twiddle optimization.}
+    \label{tab:optimization}
     \begin{tabular}{lccc}
         \hline
         \textbf{Lap} & \textbf{Average CTE ($|cte_t|$)} & \textbf{Proportional Gain ($\tau_p$)} & \textbf{Derivative Gain ($\tau_d$)} \\
@@ -160,11 +162,26 @@ the parameter space exploration and the corresponding reduction in the objective
         Final        & 0.0763                           & 0.9718                                & 1.0744                              \\
         \hline
     \end{tabular}
-    \caption{Evolution of PD parameters and average error per lap via Twiddle optimization.}
-    \label{tab:optimization}
 \end{table}
 
+As observed in Figure \ref{fig:convergence}, the Twiddle algorithm achieved a near-monotonic
+convergence, reducing the average CTE from an initial baseline of approximately $0.17$ down to under
+$0.08$ by the final lap.
 
+The parameter space search (Figure \ref{fig:convergence}, bottom) reveals a coupled dynamic between
+the control gains. The algorithm consistently increased $\tau_p$ to minimize lateral drift along
+the straightaways. Because unilaterally increasing $\tau_p$ typically induces oscillations, the
+algorithm also increased $\tau_d$ to provide additional damping. This coupled stair-step growth
+allowed the controller to track the reference trajectory while mitigating overshoot in curved
+sections. Furthermore, the lack of downward adjustments in the parameter values indicates a smooth
+descent towards a local minimum without being destabilized.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/twiddle_results.png}
+    \caption{Convergence of the average CTE over consecutive laps.}
+    \label{fig:convergence}
+\end{figure}
 
 %------------------------------------------------
 
