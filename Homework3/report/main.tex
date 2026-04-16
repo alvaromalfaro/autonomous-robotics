@@ -7,7 +7,8 @@
 \usepackage{graphicx}
 \usepackage[english]{babel}
 \usepackage{hyperref}
- 
+\usepackage{subcaption}
+
 \begin{document}
 
 
@@ -125,8 +126,6 @@ To evaluate the efficacy of the dynamic parameter optimization, the simulation w
 consequtive laps. The robot's initial spatial configuration was set to
 $(x_0, y_0, \theta_0) = (3.5, 7.5 \pm 0.5, r)$, where $r$ is a random angle in the range $[-0.2, 0.2]$.
 
-\subsection{Baseline configuration}
-
 The controller was initialized with the baseline parameters $\tau_p = 0.4$ and $\tau_d = 0.6$. To
 initialize the local search, the Twiddle step sizes were set to $\Delta p_p = 0.05$ and $\Delta p_d = 0.05$.
 During the first lap, the system operated strictly with these parameters to establish a performance
@@ -134,39 +133,38 @@ baseline, yielding an average absolute CTE of $J_{baseline} = 0.1716$.
 
 \subsection{Analysis of convergence}
 
-Following the initial lap, the descent algorithm activated. The Table \ref{tab:optimization} illustrates
+Following the initial lap, the descent algorithm activated. The Figure \ref{fig:convergence} illustrates
 the parameter space exploration and the corresponding reduction in the objective function $J$ over time.
 
-\begin{table}
-    \centering
-    \caption{Evolution of PD parameters and average error per lap via Twiddle optimization.}
-    \label{tab:optimization}
-    \begin{tabular}{lccc}
-        \hline
-        \textbf{Lap} & \textbf{Average CTE ($J$)} & \textbf{Proportional Gain ($\tau_p$)} & \textbf{Derivative Gain ($\tau_d$)} \\
-        \hline
-        1 (Base)     & 0.1716                     & 0.4000                                & 0.6000                              \\
-        2            & 0.1560                     & 0.4500                                & 0.6500                              \\
-        3            & 0.1537                     & 0.5050                                & 0.6500                              \\
-        4            & 0.1378                     & 0.5050                                & 0.7050                              \\
-        5            & 0.1358                     & 0.5655                                & 0.7050                              \\
-        6            & 0.1219                     & 0.5655                                & 0.7655                              \\
-        7            & 0.1202                     & 0.6321                                & 0.7655                              \\
-        8            & 0.1081                     & 0.6321                                & 0.8321                              \\
-        9            & 0.1068                     & 0.7053                                & 0.8321                              \\
-        10           & 0.0961                     & 0.7053                                & 0.9053                              \\
-        11           & 0.0951                     & 0.7858                                & 0.9053                              \\
-        12           & 0.0860                     & 0.7858                                & 0.9858                              \\
-        13           & 0.0851                     & 0.8744                                & 0.9858                              \\
-        14           & 0.0770                     & 0.8744                                & 1.0744                              \\
-        Final        & 0.0763                     & 0.9718                                & 1.0744                              \\
-        \hline
-    \end{tabular}
-\end{table}
+% \begin{table}
+%     \centering
+%     \caption{Evolution of PD parameters and average error per lap via Twiddle optimization.}
+%     \label{tab:optimization}
+%     \begin{tabular}{lccc}
+%         \hline
+%         \textbf{Lap} & \textbf{Average CTE ($J$)} & \textbf{Proportional Gain ($\tau_p$)} & \textbf{Derivative Gain ($\tau_d$)} \\
+%         \hline
+%         1 (Base)     & 0.1716                     & 0.4000                                & 0.6000                              \\
+%         2            & 0.1560                     & 0.4500                                & 0.6500                              \\
+%         3            & 0.1537                     & 0.5050                                & 0.6500                              \\
+%         4            & 0.1378                     & 0.5050                                & 0.7050                              \\
+%         5            & 0.1358                     & 0.5655                                & 0.7050                              \\
+%         6            & 0.1219                     & 0.5655                                & 0.7655                              \\
+%         7            & 0.1202                     & 0.6321                                & 0.7655                              \\
+%         8            & 0.1081                     & 0.6321                                & 0.8321                              \\
+%         9            & 0.1068                     & 0.7053                                & 0.8321                              \\
+%         10           & 0.0961                     & 0.7053                                & 0.9053                              \\
+%         11           & 0.0951                     & 0.7858                                & 0.9053                              \\
+%         12           & 0.0860                     & 0.7858                                & 0.9858                              \\
+%         13           & 0.0851                     & 0.8744                                & 0.9858                              \\
+%         14           & 0.0770                     & 0.8744                                & 1.0744                              \\
+%         Final        & 0.0763                     & 0.9718                                & 1.0744                              \\
+%         \hline
+%     \end{tabular}
+% \end{table}
 
-As observed in Figure \ref{fig:convergence}, the Twiddle algorithm achieved a near-monotonic
-convergence, reducing the average CTE from an initial baseline of approximately $0.17$ down to under
-$0.08$ by the final lap.
+As observed, the Twiddle algorithm achieved a near-monotonic convergence, reducing the average CTE
+from an initial baseline of approximately $0.17$ down to under $0.08$ by the final lap.
 
 The parameter space search (Figure \ref{fig:convergence}, bottom) reveals a coupled dynamic between
 the control gains. The algorithm consistently increased $\tau_p$ to minimize lateral drift along
@@ -178,13 +176,42 @@ descent towards a local minimum without being destabilized.
 
 \begin{figure}
     \centering
-    \includegraphics[width=0.8\textwidth]{img/twiddle_results.png}
-    \caption{Convergence of the average CTE over consecutive laps.}
-    \label{fig:convergence}
+    \begin{subfigure}[b]{0.6\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/twiddle_results.png}
+        \caption{Convergence of the average CTE over consecutive laps.}
+        \label{fig:convergence}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.30\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{img/final_trajectory.png}
+        \caption{Trajectory (optimized).}
+        \label{fig:final_trajectory}
+    \end{subfigure}
+
+    \caption{Results of the dynamic parameter optimization.}
+    \label{fig:combined_results}
 \end{figure}
+
+\subsection{Optimized trajectory validation}
+
+To verify the effectiveness of the optimized parameters, the controller was initialized with the
+final values $\tau_p = 0.9718$ and $\tau_d = 1.0744$ and executed for an additional lap.
+
+Figure \ref{fig:final_trajectory} illustrates the spatial trajectory of the robot during the first
+lap of this validation run. Unlike the baseline initialization which yielded an initial CTE of $0.17$,
+the pre-optimized controller started with a significantly lower initial error of approximately $0.07$.
+
+Visually, the trajectory closely adheres to the reference path. The elevated $\tau_d$ preempts the
+transition points at ($3.5, 7.5$) and ($7.5, 3.5$), allowing the robot to enter the curves without
+overshooting. This confirms that the hyperparameters represent a generalized optimal configuration
+for this track geometry, rather than being overfitted.
 
 %------------------------------------------------
 
 \section{Conclusion}
+
+
 
 \end{document}

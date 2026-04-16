@@ -9,12 +9,19 @@ taup_vals = [0.40, 0.45, 0.5050, 0.5050, 0.5655, 0.5655, 0.6321,
 taud_vals = [0.60, 0.65, 0.65, 0.7050, 0.7050, 0.7655, 0.7655,
              0.8321, 0.8321, 0.9053, 0.9053, 0.9858, 0.9858, 1.0744, 1.0744]
 
-fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
 fig.suptitle('Twiddle Optimization: Error and Parameter Evolution',
              fontsize=14, fontweight='bold')
 
 ax1.plot(laps, errors, marker='o', color='#d62728',
          linewidth=2, label='Average CTE')
+for i, txt in enumerate(errors):
+    ax1.annotate(f'{txt:.3f}',
+                 (laps[i], errors[i]),
+                 textcoords="offset points",
+                 xytext=(0, 8),
+                 ha='center',
+                 fontsize=9)
 ax1.set_ylabel('Average Error (|cte|)', fontsize=12)
 ax1.grid(True, linestyle='--', alpha=0.7)
 ax1.legend(loc='upper right')
@@ -24,6 +31,23 @@ ax2.plot(laps, taup_vals, marker='s', color='#1f77b4',
          linewidth=2, label='Proportional Gain ($\\tau_p$)')
 ax2.plot(laps, taud_vals, marker='^', color='#2ca02c',
          linewidth=2, label='Derivative Gain ($\\tau_d$)')
+for i, txt in enumerate(taup_vals):
+    ax2.annotate(f'{txt:.2f}',
+                 (laps[i], taup_vals[i]),
+                 textcoords="offset points",
+                 xytext=(0, -15),
+                 ha='center',
+                 fontsize=9,
+                 color='#1f77b4')
+
+for i, txt in enumerate(taud_vals):
+    ax2.annotate(f'{txt:.2f}',
+                 (laps[i], taud_vals[i]),
+                 textcoords="offset points",
+                 xytext=(0, 8),
+                 ha='center',
+                 fontsize=9,
+                 color='#2ca02c')
 ax2.set_xlabel('Lap Number', fontsize=12)
 ax2.set_ylabel('Gain Value', fontsize=12)
 ax2.grid(True, linestyle='--', alpha=0.7)
