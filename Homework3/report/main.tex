@@ -28,9 +28,9 @@ of $v_x=0.2$ units per second. The controller governs the agent's heading by cal
 appropriate angular velocity to minimize the \textbf{cross-track error} (CTE) relative to the
 guidance path.
 
-To achieve this, a \textbf{Proportional-Derivative} (PD) controller was implemented. The PD
-controller is a continuous feedback mechanism that computes an error value as the difference between
-the track center and the robot's current position, applying a restorative correction.
+To achieve this, a \textbf{Proportional-Derivative} (PD) controller was implemented. It is a
+continuous feedback mechanism that computes an error value as the difference between the track
+center and the robot's current position, applying a restorative correction.
 
 Formally, let $cte_t$ denote the CTE at time $t$, defined as the orthogonal distance from the robot's
 origin to the target trajectory. The control law is defined as:
