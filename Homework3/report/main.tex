@@ -25,8 +25,8 @@ an autonomous agent operating within the \textit{ROS2} \texttt{turtlesim} enviro
 task requires the robot to continuously navigate a predefined closed-loop track, composed of two
 straightaways and two semi-circular curves with a radius of $r = 2$, at a constant linear velocity
 of $v_x=0.2$ units per second. The controller governs the agent's heading by calculating the
-appropriate angular velocity ($\omega_z$) to minimize the \textbf{cross-track error} (CTE) relative
-to the guidance path.
+appropriate angular velocity to minimize the \textbf{cross-track error} (CTE) relative to the
+guidance path.
 
 To achieve this, a \textbf{Proportional-Derivative} (PD) controller was implemented. The PD
 controller is a continuous feedback mechanism that computes an error value as the difference between
@@ -53,16 +53,9 @@ The advanced implementation of this assignment focuses on two main improvements 
 controller: increasing the control loop frequency for greater stability and implementing a coordinate
 descent algorithm (\textbf{Twiddle}) to optimize the hyperparameters $\tau_p$ and $\tau_d$.
 
-\subsection{Control loop discretization and frequency}
-
-The base implementation force the \texttt{listener\_callback} to execute only once per second. This
-limitation was reduces to $0.1$ seconds, allowing the robot to correct its orientation more
-frequently. The derivative term is computed using the actual elapsed time between callbacks:
-\begin{equation}
-    \frac{d cte_t}{dt} \approx \frac{cte_t - cte_{t-1}}{\Delta t}
-\end{equation}
-This ensures that the force applied by the $\tau_d$ term scales relatively to the physical time step,
-preventing the controller from becoming unstable at higher frequencies.
+One implementation detail is that the base implementation forces the \texttt{listener\_callback} to
+execute only once per second. This limitation was reduced to $0.1$ seconds, allowing the robot to
+correct its orientation more frequently.
 
 \subsection{Cross-Track Error (CTE) computation}
 
@@ -164,26 +157,28 @@ the parameter space exploration and the corresponding reduction in the objective
 % \end{table}
 
 As observed, the Twiddle algorithm achieved a near-monotonic convergence, reducing the average CTE
-from an initial baseline of approximately $0.17$ down to under $0.08$ by the final lap.
+from an initial baseline of approximately $0.17$ down to under $0.08$ by the final lap. Also,
+modifications to $\tau_d$ caused more significant reductions in the error compared to adjustments in
+$\tau_p$, indicating that the system's performance was more sensitive to the derivative term.
 
 The parameter space search (Figure \ref{fig:convergence}, bottom) reveals a coupled dynamic between
 the control gains. The algorithm consistently increased $\tau_p$ to minimize lateral drift along
 the straightaways. Because unilaterally increasing $\tau_p$ typically induces oscillations, the
-algorithm also increased $\tau_d$ to provide additional damping. This coupled stair-step growth
-allowed the controller to track the reference trajectory while mitigating overshoot in curved
-sections. Furthermore, the lack of downward adjustments in the parameter values indicates a smooth
-descent towards a local minimum without being destabilized.
+algorithm also increased $\tau_d$ to provide additional damping. This stair-step growth allowed the
+controller to track the reference trajectory while mitigating overshoot in curved sections.
+Furthermore, the lack of downward adjustments in the parameter values indicates a smooth descent
+towards a local minimum without being destabilized.
 
 \begin{figure}
     \centering
-    \begin{subfigure}[b]{0.6\textwidth}
+    \begin{subfigure}[b]{0.58\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/twiddle_results.png}
         \caption{Convergence of the average CTE over consecutive laps.}
         \label{fig:convergence}
     \end{subfigure}
     \hfill
-    \begin{subfigure}[b]{0.30\textwidth}
+    \begin{subfigure}[b]{0.3\textwidth}
         \centering
         \includegraphics[width=\textwidth]{img/final_trajectory.png}
         \caption{Trajectory (optimized).}
@@ -204,7 +199,7 @@ lap of this validation run. Unlike the baseline initialization which yielded an 
 the pre-optimized controller started with a significantly lower initial error of approximately $0.07$.
 
 Visually, the trajectory closely adheres to the reference path. The elevated $\tau_d$ preempts the
-transition points at ($3.5, 7.5$) and ($7.5, 3.5$), allowing the robot to enter the curves without
+transition points at ($7.5, 7.5$) and ($3.5, 3.5$), allowing the robot to enter the curves without
 overshooting. This confirms that the hyperparameters represent a generalized optimal configuration
 for this track geometry, rather than being overfitted.
 
@@ -212,6 +207,13 @@ for this track geometry, rather than being overfitted.
 
 \section{Conclusion}
 
+This assignment has served as a good exercise to be introduced to the \textit{ROS 2} ecosystem and
+to implement a basic PD controller for trajectory tracking. The advanced development requirement
+pushed it further by integrating an optimization algorithm to tune the controller's hyperparameters
+based on the robot's performance.
 
+The system successfully reduced the average CTE from an initial $0.17$ to under $0.08$. Furthermore,
+the final spatial validation confirmed that these optimized parameters yielded a more robust and
+accurate trajectory tracking performance.
 
 \end{document}
