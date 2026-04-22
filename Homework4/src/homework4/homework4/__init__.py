@@ -34,7 +34,7 @@ from flatland_msgs.srv import MoveModel, SpawnModel
 #                         i ≈ N/4
 #
 #
-#i = N-1  → angle ≈ +π  → BACK 
+# i = N-1  → angle ≈ +π  → BACK
 
 
 @dataclass(frozen=True)
@@ -113,12 +113,15 @@ class Controller(Node):
         # ---------------------------
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 1)
 
-        self.create_subscription(LaserScan, "/static_laser", self.lidar_callback, 1)
-        self.create_subscription(Collisions, "/collisions", self.collision_callback, 1)
+        self.create_subscription(
+            LaserScan, "/static_laser", self.lidar_callback, 1)
+        self.create_subscription(
+            Collisions, "/collisions", self.collision_callback, 1)
         self.create_subscription(Odometry, "/odom", self.odom_callback, 10)
 
         self.move_client: Client = self.create_client(MoveModel, "/move_model")
-        self.spawn_client: Client = self.create_client(SpawnModel, "/spawn_model")
+        self.spawn_client: Client = self.create_client(
+            SpawnModel, "/spawn_model")
 
         self.wait_for_services()
         self.spawn_all_obstacles()
@@ -229,7 +232,32 @@ class Controller(Node):
     # Detection logic
     # ---------------------------
     def should_remove_obstacle(self, obstacle: ObstacleSpec, scan: LaserScan) -> bool:
-        # TODO: INCLUDE YOUR LOGIC HERE
+        dx = obstacle.x - self.pose.x
+        dy = obstacle.y - self.pose.y
+        distance = math.hypot(dx, dy)
+
+        if distance > 1.0:
+            # not close enough
+            return False
+
+        # calculate local angle to the goal
+        global_angle = math.atan2(dy, dx)
+        local_angle = self.normalize_angle(global_angle - self.pose.theta)
+
+        # find LiDAR array index
+        scan_idx = self.angle_to_scan_index(scan, local_angle)
+        if scan_idx is None:
+            return False
+
+        # check LiDAR measurement
+        lidar_distance = self.get_mean_range(
+            list(scan.ranges), scan_idx, window=self.config.mean_window)
+
+        # verify if the reading matches the expected distance
+        distance_error = abs(lidar_distance - distance)
+        if distance_error <= self.config.obstacle_match_tolerance:
+            return True
+
         return False
 
     def process_obstacle_detection(self, scan: LaserScan) -> None:
@@ -267,7 +295,8 @@ class Controller(Node):
 
         if self.rotation_iterations_left == 0:
             front_index: int = len(scan.ranges) // 2
-            front_distance: float = self.get_mean_range(list(scan.ranges), front_index)
+            front_distance: float = self.get_mean_range(
+                list(scan.ranges), front_index)
 
             if front_distance < self.config.min_distance:
                 self.start_random_rotation()
