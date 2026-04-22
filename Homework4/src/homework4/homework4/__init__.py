@@ -183,6 +183,37 @@ class Controller(Node):
         self.angular_speed = random.uniform(-math.pi, math.pi)
         self.rotation_iterations_left = self.config.random_rotation_iterations
 
+    def start_heuristic_rotation(self, scan: LaserScan) -> None:
+        """
+        New method to determine the direction of rotation based on maximum available free space.
+        Evaluates the left and right LiDAR sectors.
+        """
+        n = len(scan.ranges)
+
+        # define indexes
+        left_idx = int(n * .75)
+        right_idx = int(n * .25)
+
+        # calculate mean space in both directions
+        left_space = self.get_mean_range(list(scan.ranges), left_idx, window=5)
+        right_space = self.get_mean_range(
+            list(scan.ranges), right_idx, window=5)
+
+        # angular velocity
+        turn_speed = 1.5
+
+        # rotate towards the direction with more free space
+        if left_space >= right_space:
+            self.angular_speed = turn_speed
+            self.get_logger().info(
+                f"Turning LEFT (Left space: {left_space:.2f}, Right space: {right_space:.2f})")
+        else:
+            self.angular_speed = -turn_speed
+            self.get_logger().info(
+                f"Turning RIGHT (Right space: {right_space:.2f}, Left space: {left_space:.2f})")
+
+        self.rotation_iterations_left = self.config.random_rotation_iterations
+
     # ---------------------------
     # Geometry helpers
     # ---------------------------
@@ -299,7 +330,8 @@ class Controller(Node):
                 list(scan.ranges), front_index)
 
             if front_distance < self.config.min_distance:
-                self.start_random_rotation()
+                # self.start_random_rotation()
+                self.start_heuristic_rotation(scan)
                 self.get_logger().info(
                     f"Front obstacle at {front_distance:.2f} m -> rotating with "
                     f"angular speed {self.angular_speed:.2f}"
