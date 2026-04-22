@@ -1,0 +1,87 @@
+bodies:
+
+  - name: base_link
+    enabled: true
+    pose: [0, 0, 0]
+    type: dynamic
+    color: [0, 0, 1, 0.75]
+    footprints:
+      - type: polygon
+        density: 1
+        layers: ["no_laser"]
+        points: [ [-0.15, -0.10],
+                  [ 0.15, -0.10],
+                  [ 0.15,  0.10],
+                  [-0.15,  0.10] ]
+
+  - name: left_wheel
+    color: [1, 1, 0, 0.75]
+    footprints:
+      - type: polygon
+        density: 1.0
+        layers: ["no_laser"]
+        points: [ [-0.05, -0.02],
+                  [ 0.05, -0.02],
+                  [ 0.05,  0.02],
+                  [-0.05,  0.02] ]
+
+  - name: right_wheel
+    color: [1, 1, 0, 0.75]
+    footprints:
+      - type: polygon
+        density: 1.0
+        layers: ["no_laser"]
+        points: [ [-0.05, -0.02],
+                  [ 0.05, -0.02],
+                  [ 0.05,  0.02],
+                  [-0.05,  0.02] ]
+
+joints:
+  - type: weld
+    name: left_wheel_weld
+    bodies:
+      - name: left_wheel
+        anchor: [0, 0]
+      - name: base_link
+        anchor: [0, -0.12]
+
+  - type: weld
+    name: right_wheel_weld
+    bodies:
+      - name: right_wheel
+        anchor: [0, 0]
+      - name: base_link
+        anchor: [0, 0.12]
+
+plugins:
+  - type: DiffDrive
+    name: serp_diff_drive
+    body: base_link
+    pub_rate: 10
+    twist_sub: cmd_vel
+    odom_frame_id: odom
+    odom_pub: odom  # topic odom is published on
+  
+  # needed for some visualization components
+  - type: ModelTfPublisher
+    name: tf_publisher
+    publish_tf_world: false
+
+  # simulates a lidar by having 90 lasers evenly spread around the model
+  - type: Laser
+    name: static_laser
+    frame: static_laser_link
+    topic: static_laser
+    body: base_link
+    broadcast_tf: true
+    origin: [0.0, 0.0, 0.0]
+    range: 4
+    angle: {min: -3.14159265359, max: 3.14159265359, increment: 0.06981317007}
+    noise_std_dev: 0.015
+    update_rate: 10
+    layers: ["static"]
+
+  - type: Bumper
+    name: bumper
+    topic: collisions
+    update_rate: 10        

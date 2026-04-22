@@ -1,0 +1,10 @@
+bodies:
+  - name: obstacle
+    enabled: true
+    type: static
+    color: [0.0, 1.0, 0.0, 1.0]
+    footprints:
+      - type: circle
+        radius: 0.15
+        density: 1.0
+        layers: ["static"]
