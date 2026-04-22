@@ -15,6 +15,8 @@ def generate_launch_description():
     show_viz = LaunchConfiguration("show_viz")
     viz_pub_rate = LaunchConfiguration("viz_pub_rate")
     use_sim_time = LaunchConfiguration("use_sim_time")
+    map_name = LaunchConfiguration("map_name")
+    output_csv = LaunchConfiguration("output_csv")
 
     ld = LaunchDescription(
         [
@@ -30,6 +32,8 @@ def generate_launch_description():
             DeclareLaunchArgument(name="show_viz", default_value="true"),
             DeclareLaunchArgument(name="viz_pub_rate", default_value="30.0"),
             DeclareLaunchArgument(name="use_sim_time", default_value="true"),
+            DeclareLaunchArgument(name="map_name", default_value="default"),
+            DeclareLaunchArgument(name="output_csv", default_value="~/homework4_results.csv"),
 
             SetEnvironmentVariable(name="ROSCONSOLE_FORMAT", value="[${severity} ${time} ${logger}]: ${message}"),
 
@@ -56,6 +60,11 @@ def generate_launch_description():
                 package="homework4",
                 executable="homework4",
                 output="screen",
+                parameters=[
+                    {"map_name": map_name},
+                    {"output_csv": output_csv},
+                    {"use_sim_time": use_sim_time},
+                ],
             ),
 
             # maps

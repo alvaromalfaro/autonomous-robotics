@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import csv
 import math
+import os
 import random
 from dataclasses import dataclass
 from typing import Dict, List, Optional
@@ -77,6 +79,22 @@ class ControllerConfig:
     obstacle_model_path: str = "cylinder_obstacle.model.yaml"
 
 
+@dataclass(frozen=True)
+class ExperimentConfig:
+    nav_mode: str       # "basic" or "improved"
+    linear_speed: float
+    mean_window: int
+
+
+EXPERIMENT_CONFIGS: List[ExperimentConfig] = [
+    ExperimentConfig(nav, speed, window)
+    for nav in ("basic", "improved")
+    for speed in (1.0, 0.5, 2.0)
+    for window in (4, 2)
+]  # 12 configurations x 10 runs each = 120 total runs
+RUNS_PER_CONFIG = 10
+
+
 class Controller(Node):
 
     def __init__(self) -> None:
@@ -109,6 +127,21 @@ class Controller(Node):
         }
 
         # ---------------------------
+        # Experiment tracking
+        # ---------------------------
+        self.map_name: str = self.declare_parameter(
+            "map_name", "default").value
+        self.output_csv: str = self.declare_parameter(
+            "output_csv", os.path.expanduser("~/homework4_results.csv")
+        ).value
+        self.config_idx: int = 0
+        self.run_idx: int = 0
+        self.all_results: List[dict] = []
+        self.detection_times: Dict[str, float] = {}
+        self.run_start_time: float = 0.0
+        self.resetting: bool = True  # blocks lidar_callback until world is ready
+
+        # ---------------------------
         # ROS interfaces
         # ---------------------------
         self.cmd_pub = self.create_publisher(Twist, "/cmd_vel", 1)
@@ -126,6 +159,9 @@ class Controller(Node):
         self.wait_for_services()
         self.spawn_all_obstacles()
 
+        # Give the simulator time to settle before starting the first run.
+        self._initial_start_timer = self.create_timer(3.0, self._initial_start)
+
     # ---------------------------
     # Initialization helpers
     # ---------------------------
@@ -136,6 +172,11 @@ class Controller(Node):
     def spawn_all_obstacles(self) -> None:
         for obstacle in self.obstacles:
             self.spawn_obstacle(obstacle)
+
+    def _initial_start(self) -> None:
+        """One-shot timer callback that fires 3 s after startup."""
+        self.destroy_timer(self._initial_start_timer)
+        self._start_run()
 
     # ---------------------------
     # ROS service helpers
@@ -169,6 +210,107 @@ class Controller(Node):
         )
         del self.active_obstacles[name]
         self.get_logger().info(f"Removed obstacle {name}")
+
+        # record detection time
+        elapsed = self.get_clock().now().nanoseconds / 1e9 - self.run_start_time
+        self.detection_times[name] = round(elapsed, 3)
+
+        # check if all obstacles have been detected and finish the run if so
+        if not self.active_obstacles:
+            self._finish_run()
+
+    # ---------------------------
+    # Experiment helpers
+    # ---------------------------
+    def _current_exp(self) -> ExperimentConfig:
+        """Returns the ExperimentConfig for the current config_idx."""
+        return EXPERIMENT_CONFIGS[self.config_idx]
+
+    def _start_run(self) -> None:
+        """Starts a new run using the current config_idx and run_idx."""
+        exp = self._current_exp()
+        self.detection_times = {}
+        self.active_obstacles = {o.name: o for o in self.obstacles}
+        self.rotation_iterations_left = 0
+        self.run_start_time = self.get_clock().now().nanoseconds / 1e9
+        self.resetting = False
+        self.get_logger().info(
+            f"[Config {self.config_idx + 1}/{len(EXPERIMENT_CONFIGS)}, "
+            f"Run {self.run_idx + 1}/{RUNS_PER_CONFIG}] "
+            f"nav={exp.nav_mode} speed={exp.linear_speed} window={exp.mean_window}"
+        )
+
+    def _finish_run(self) -> None:
+        """Finishes the current run, records results, and triggers world reset."""
+        exp = self._current_exp()
+        total_time = round(max(self.detection_times.values()), 3)
+        row = {
+            "map_name": self.map_name,
+            "nav_mode": exp.nav_mode,
+            "linear_speed": exp.linear_speed,
+            "mean_window": exp.mean_window,
+            "run": self.run_idx + 1,
+            "obstacle1_time": self.detection_times.get("obstacle1", ""),
+            "obstacle2_time": self.detection_times.get("obstacle2", ""),
+            "obstacle3_time": self.detection_times.get("obstacle3", ""),
+            "obstacle4_time": self.detection_times.get("obstacle4", ""),
+            "total_time": total_time,
+        }
+        self.all_results.append(row)
+        self.get_logger().info(
+            f"Run finished — total_time={total_time:.2f}s detections={self.detection_times}"
+        )
+        self._reset_world()
+
+    def _reset_world(self) -> None:
+        """Resets the world to the initial state for the next run."""
+        self.resetting = True
+        self.publish_speed(0.0, 0.0)
+        self.rotation_iterations_left = 0
+
+        self.move_model(
+            "robot",
+            self.config.robot_initial_x,
+            self.config.robot_initial_y,
+            self.config.robot_initial_theta,
+        )
+        for obstacle in self.obstacles:
+            self.move_model(obstacle.name, obstacle.x,
+                            obstacle.y, obstacle.theta)
+
+        self._reset_timer = self.create_timer(2.0, self._advance_and_start)
+
+    def _advance_and_start(self) -> None:
+        self.destroy_timer(self._reset_timer)
+
+        self.run_idx += 1
+        if self.run_idx >= RUNS_PER_CONFIG:
+            self.run_idx = 0
+            self.config_idx += 1
+
+        if self.config_idx >= len(EXPERIMENT_CONFIGS):
+            self._save_csv()
+            self.get_logger().info("All experiments done. Shutting down.")
+            rclpy.shutdown()
+            return
+
+        self._start_run()
+
+    def _save_csv(self) -> None:
+        fieldnames = [
+            "map_name", "nav_mode", "linear_speed", "mean_window", "run",
+            "obstacle1_time", "obstacle2_time", "obstacle3_time", "obstacle4_time",
+            "total_time",
+        ]
+        path = os.path.expanduser(self.output_csv)
+        file_exists = os.path.isfile(path)
+        with open(path, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            if not file_exists:
+                writer.writeheader()
+            writer.writerows(self.all_results)
+        self.get_logger().info(
+            f"Results saved to {path} ({len(self.all_results)} rows)")
 
     # ---------------------------
     # Motion helpers
@@ -280,9 +422,10 @@ class Controller(Node):
         if scan_idx is None:
             return False
 
-        # check LiDAR measurement
+        # check LiDAR measurement using the current experiment's mean_window
+        exp_window = self._current_exp().mean_window
         lidar_distance = self.get_mean_range(
-            list(scan.ranges), scan_idx, window=self.config.mean_window)
+            list(scan.ranges), scan_idx, window=exp_window)
 
         # verify if the reading matches the expected distance
         distance_error = abs(lidar_distance - distance)
@@ -322,22 +465,32 @@ class Controller(Node):
         )
 
     def lidar_callback(self, scan: LaserScan) -> None:
+        if self.resetting:
+            return
+
         self.process_obstacle_detection(scan)
+
+        if self.resetting:  # _reset_world may have been triggered inside detection
+            return
+
+        exp = self._current_exp()
 
         if self.rotation_iterations_left == 0:
             front_index: int = len(scan.ranges) // 2
             front_distance: float = self.get_mean_range(
-                list(scan.ranges), front_index)
+                list(scan.ranges), front_index, window=exp.mean_window)
 
             if front_distance < self.config.min_distance:
-                # self.start_random_rotation()
-                self.start_heuristic_rotation(scan)
+                if exp.nav_mode == "random":
+                    self.start_random_rotation()
+                else:
+                    self.start_heuristic_rotation(scan)
                 self.get_logger().info(
                     f"Front obstacle at {front_distance:.2f} m -> rotating with "
                     f"angular speed {self.angular_speed:.2f}"
                 )
             else:
-                self.publish_speed(self.config.linear_speed, 0.0)
+                self.publish_speed(exp.linear_speed, 0.0)
                 return
 
         self.rotation_iterations_left -= 1
