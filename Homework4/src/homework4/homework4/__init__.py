@@ -327,33 +327,22 @@ class Controller(Node):
 
     def start_heuristic_rotation(self, scan: LaserScan) -> None:
         """
-        New method to determine the direction of rotation based on maximum available free space.
-        Evaluates the left and right LiDAR sectors.
+        Rotate toward the direction with the most free space across all 360 degrees.
         """
-        n = len(scan.ranges)
+        ranges = list(scan.ranges)
 
-        # define indexes
-        left_idx = int(n * .75)
-        right_idx = int(n * .25)
+        best_idx = max(range(len(ranges)),
+                       key=lambda i: self.get_mean_range(ranges, i, window=5))
 
-        # calculate mean space in both directions
-        left_space = self.get_mean_range(list(scan.ranges), left_idx, window=5)
-        right_space = self.get_mean_range(
-            list(scan.ranges), right_idx, window=5)
-
-        # angular velocity
+        best_angle = scan.angle_min + best_idx * scan.angle_increment
         turn_speed = 1.5
+        self.angular_speed = turn_speed if best_angle >= 0 else -turn_speed
 
-        # rotate towards the direction with more free space
-        if left_space >= right_space:
-            self.angular_speed = turn_speed
-            self.get_logger().info(
-                f"Turning LEFT (Left space: {left_space:.2f}, Right space: {right_space:.2f})")
-        else:
-            self.angular_speed = -turn_speed
-            self.get_logger().info(
-                f"Turning RIGHT (Right space: {right_space:.2f}, Left space: {left_space:.2f})")
-
+        self.get_logger().info(
+            f"Turning {'LEFT' if self.angular_speed > 0 else 'RIGHT'} "
+            f"toward best angle {math.degrees(best_angle):.1f}° "
+            f"(space={self.get_mean_range(ranges, best_idx, window=5):.2f} m)"
+        )
         self.rotation_iterations_left = self.config.random_rotation_iterations
 
     # ---------------------------
@@ -409,7 +398,7 @@ class Controller(Node):
         dy = obstacle.y - self.pose.y
         distance = math.hypot(dx, dy)
 
-        if distance > 1.0:
+        if distance > self.config.obstacle_detection_distance:
             # not close enough
             return False
 
