@@ -16,9 +16,9 @@ draw.rectangle([width_px - wall_thickness, 0, width_px, height_px], fill=0)
 
 img.save("rect_map.png")
 
-# ── x_map ─────────────────────────────────────────────────
-# Obstacles are at pixel columns x=60 and x=140.
-# X arms span [cx±arm] = [68, 132], staying clear of obstacle columns.
+# ── plus_map ──────────────────────────────────────────────
+# + shaped wall centered at (100, 60).
+# Arms stop clear of obstacle columns (x=60,140) and rows (y=30,90).
 img = Image.new("L", (width_px, height_px), 255)
 draw = ImageDraw.Draw(img)
 
@@ -28,13 +28,16 @@ draw.rectangle([0, 0, wall_thickness, height_px], fill=0)
 draw.rectangle([width_px - wall_thickness, 0, width_px, height_px], fill=0)
 
 cx, cy = width_px // 2, height_px // 2  # (100, 60)
-arm = 22    # half-length in pixels (~1.1 m)
+arm = 25       # half-length in pixels (~1.25 m)
 thickness = 8  # wall thickness in pixels (~0.4 m)
+half_t = thickness // 2
 
-draw.line([(cx - arm, cy - arm), (cx + arm, cy + arm)], fill=0, width=thickness)
-draw.line([(cx + arm, cy - arm), (cx - arm, cy + arm)], fill=0, width=thickness)
+# Horizontal arm: x=[78, 122], y=[56, 64]
+draw.rectangle([cx - arm, cy - half_t, cx + arm, cy + half_t], fill=0)
+# Vertical arm: x=[96, 104], y=[38, 82]
+draw.rectangle([cx - half_t, cy - arm, cx + half_t, cy + arm], fill=0)
 
-img.save("x_map.png")
+img.save("plus_map.png")
 
 # ── hard_map ──────────────────────────────────────────────
 # Cross-shaped internal walls divide the map into 4 rooms.
