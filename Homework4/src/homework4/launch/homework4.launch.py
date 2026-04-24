@@ -9,7 +9,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     pkg_share = FindPackageShare("homework4")
 
-    world_path = LaunchConfiguration("world_path")
+    world_name = LaunchConfiguration("world_name")
     update_rate = LaunchConfiguration("update_rate")
     step_size = LaunchConfiguration("step_size")
     show_viz = LaunchConfiguration("show_viz")
@@ -18,15 +18,14 @@ def generate_launch_description():
     map_name = LaunchConfiguration("map_name")
     output_csv = LaunchConfiguration("output_csv")
 
+    world_path = PathJoinSubstitution([pkg_share, "world", world_name])
+
     ld = LaunchDescription(
         [
             # Flatland parameters.
             # You can either change these values directly here or override them in the launch command default values. Example:
             #   ros2 launch serp_teleop serp_teleop.launch.py update_rate:="20.0"
-            DeclareLaunchArgument(
-                name="world_path",
-                default_value=PathJoinSubstitution([pkg_share, "world/world.yaml"]),
-            ),
+            DeclareLaunchArgument(name="world_name", default_value="world.yaml"),
             DeclareLaunchArgument(name="update_rate", default_value="100.0"),
             DeclareLaunchArgument(name="step_size", default_value="0.01"),
             DeclareLaunchArgument(name="show_viz", default_value="true"),

@@ -132,7 +132,8 @@ class Controller(Node):
         self.map_name: str = self.declare_parameter(
             "map_name", "default").value
         self.output_csv: str = self.declare_parameter(
-            "output_csv", os.path.expanduser("~/homework4_results.csv")
+            "output_csv",
+            os.path.expanduser(f"~/homework4_results_{self.map_name}.csv")
         ).value
         self.config_idx: int = 0
         self.run_idx: int = 0
