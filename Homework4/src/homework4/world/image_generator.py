@@ -28,7 +28,7 @@ draw.rectangle([0, 0, wall_thickness, height_px], fill=0)
 draw.rectangle([width_px - wall_thickness, 0, width_px, height_px], fill=0)
 
 cx, cy = width_px // 2, height_px // 2  # (100, 60)
-arm = 32    # half-length in pixels (~1.6 m)
+arm = 22    # half-length in pixels (~1.1 m)
 thickness = 8  # wall thickness in pixels (~0.4 m)
 
 draw.line([(cx - arm, cy - arm), (cx + arm, cy + arm)], fill=0, width=thickness)
