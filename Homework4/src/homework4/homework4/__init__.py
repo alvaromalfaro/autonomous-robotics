@@ -331,9 +331,10 @@ class Controller(Node):
         Rotate toward the direction with the most free space across all 360 degrees.
         """
         ranges = list(scan.ranges)
+        window = self._current_exp().mean_window
 
         best_idx = max(range(len(ranges)),
-                       key=lambda i: self.get_mean_range(ranges, i, window=5))
+                       key=lambda i: self.get_mean_range(ranges, i, window=window))
 
         best_angle = scan.angle_min + best_idx * scan.angle_increment
         turn_speed = 1.5
@@ -342,7 +343,7 @@ class Controller(Node):
         self.get_logger().info(
             f"Turning {'LEFT' if self.angular_speed > 0 else 'RIGHT'} "
             f"toward best angle {math.degrees(best_angle):.1f}° "
-            f"(space={self.get_mean_range(ranges, best_idx, window=5):.2f} m)"
+            f"(space={self.get_mean_range(ranges, best_idx, window=window):.2f} m)"
         )
         self.rotation_iterations_left = self.config.random_rotation_iterations
 
