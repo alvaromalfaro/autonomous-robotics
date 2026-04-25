@@ -1,0 +1,156 @@
+\documentclass[12pt]{article}
+\setlength{\parskip}{0.2cm}
+\setlength{\parindent}{0.5cm}
+ 
+\usepackage[margin=1in]{geometry} 
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\usepackage{hyperref}
+\usepackage{subcaption}
+
+\begin{document}
+
+
+\title{Homework 4 - Report}
+\author{Álvaro Martínez Alfaro\\
+    Autonomous Robotics}
+
+\maketitle
+
+\section{Introduction}
+
+This report presents the development and evaluation of a reactive navigation system for a simulated
+mobile robot in the \textbf{Flatland} environment under \textbf{ROS2}. Flatland is a lightweight 2D
+simulatoir that enables rapid prototyping of robotic algorithms without the overhead of 3D physics
+engines.
+
+The scenario consists of a robot equipped with a 360° LiDAR sensor navigating a $10 \times 6$m
+bounded arena in which four goal objects are placed at fixed positions. The robot's baseline
+behavior follows a simple reactive loop: move forward until an obstacle is detected, then turn in a
+random direction. This work extends the baseline through four progressive steps: (i) implementing a
+\textbf{goal detector} that uses laser readings to identify and remove goals upon close proximity,
+(ii) an \textbf{improved navigation} strategy that selects the direction with the most free space
+instead of turning randomly, (iii) systematic \textbf{experimentation} across different navigation
+modes, linear speeds, and laser ranges, and (iv) the design and evaluation of \textbf{custom maps}
+to assess the robustness of the developed behaviors.
+
+The remainder of the report is structured as follows: Section \ref{sec:implementation} details the
+implementation of each component, Section \ref{sec:experimentation} presents the experimental
+results, and Section \ref{sec:conclusion} draws conclusions from the work.
+
+%------------------------------------------------
+
+\section{Implementation details} \label{sec:implementation}
+
+The entire implementation is contained in two files: \texttt{\_\_init\_\_.py}, which defines the
+\textbf{Controller} ROS2 node responsible for robot perception, navigation, goal detection and
+experiment management; and \texttt{homework4.launch.py}, which exposes configurable arguments for
+the map type and output \texttt{csv} file.
+
+\subsection{Goal detector}
+
+Goal detection runs on every laser callback via \texttt{process\_obstacle\_detection}, which
+iterates over all remaining active obstacles and calls \texttt{should\_remove\_obstacle} for each
+one. This function applies a two-condition check:
+
+\begin{enumerate}
+    \item \textbf{Proximity filter}: computes the Euclidean distance from the robot pose to the
+          obstacle's known position. If it exceeds the \texttt{obstacle\_detection\_distance}
+          threshold (1.0 m), the check is skipped immediately.
+    \item \textbf{LAser confirmation}: converts the vector to the obstacle into a robot-relative
+          angle (\texttt{global\_angle - robot\_theta}, normalized to $[-\pi, \pi]$), maps the angle
+          to a laser scan index via \texttt{angle\_to\_scan\_index}, then reads the average laser
+          range at that index using \texttt{get\_mean\_range} (a windowed average over $\pm$
+          \texttt{mean\_window}) neighboring rays). If the difference between the laser reading and
+          the computed distance is within the \texttt{obstacle\_match\_tolerance} (0.2 m), the
+          obstacle is confirmed and removed from the active list.
+\end{enumerate}
+
+When a goal is confirmed, \texttt{remove\_obstacle} relocates it off-map via Flatland's
+\texttt{MoveModel} service, records the elapsed time since run start (for experimentation purposes),
+and removes it from the active set. When the last obstacle is removed, the run ends.
+
+Here, the key parameters are the \texttt{obstacle\_detection\_distance}, which limits the search to
+a radius around the robot and is set to $1.0$m; the \texttt{obstacle\_match\_tolerance},
+which accounts for sensor noise and map inaccuracies and is set to $0.2$m; and the
+\texttt{mean\_window}, which smooths laser readings to improve robustness and its values vary per
+experiment ($2$ or $4$).
+
+\subsection{Improved navigation}
+
+The navigation decision is made inside \texttt{lidar\_callback}. On each scan, the averaged front
+laser reading (index $\lfloor N/2 \rfloor$, window = \texttt{mean\_window}) is compared against
+\texttt{min\_distance} ($0.8$m). If the path ahead is blocked, the controller triggers a rotation,
+either random or heuristic depending on the current \texttt{nav\_mode}.
+
+In the \textbf{random} mode (\texttt{start\_random\_rotation}), the robot simply picks a random
+angular speed uniformly in $[-\pi, \pi]$ rad/s. In the \textbf{improved} mode
+(\texttt{start\_heuristic\_rotation}), the robot scans all $N$ laser rays and finds the index with
+the highest windowed average range (window = \texttt{mean\_window}). It derives the corresponding
+robot-relative angle and turns at $\pm 1.5$ rad/s, positive (left) if the angle is $\ge 0$ and
+negative (right) otherwise.
+
+In both modes, \texttt{rotation\_iterations\_left} is set to \texttt{random\_rotation\_iterations}
+(10) and counted down each callback tick, during which the robot rotates in place.
+
+Finally, the key parameters here are the \texttt{min\_distance} threshold for obstacle avoidance,
+which is set to $0.8$m; the \texttt{random\_rotation\_iterations}, which determines how long the
+robot rotates, set to $10$ iterations; and the turn speed fixed at $1.5$ rad/s in the improved mode.
+
+\subsection{Map generation}
+
+Maps in Flatland are defined by grayscale \textit{PNG} images paired with a \textit{YAML}
+configuration file. Black pixels (0) are treated as walls, while white pixels (255) represent free
+space. The \textit{YAML} sets the map resolution ($0.05$ m/pixel) and the origin ($-5.0, -3.0$), so
+the $200 \times 120$ pixel image maps to a $10 \times 6$ m world with $(0,0)$ at the center.
+
+The script \texttt{image\_generator.py} uses the \textit{PIL} library to programmatically draw three
+maps:
+
+\begin{itemize}
+    \item \textbf{Rectangular map}: only the four outer walls are present, creating a simple open
+          arena for baseline testing.
+    \item \textbf{Line map}: adds a thin vertical wall near the center ($6$ pixels wide $\times$
+          $40$ pixels tall $= 0.3 \times 2.0$ m). It creates a partial barrier that splits the arena
+          symmetrically.
+    \item \textbf{Plus map}: adds a plus-shaped wall centered at world origin ($0,0$), with arms
+          of 25 pixels ($1.25$ m) and thickness of 8 pixels ($0.4$ m). It divides the arena into
+          four quadrants, forcing the robot to navigate around it.
+\end{itemize}
+
+Both custom maps are designed to avoid the four goal positions ($\pm 2.5, \pm 1.5$), so goals remain
+reachable in all configurations. Each map has its own \texttt{world\_*.yaml} and \texttt{*\_map.yaml}
+and can be selected at launch via the \texttt{world\_name} argument. The three maps are shown in
+Figure \ref{fig:maps}.
+
+\begin{figure}
+    \centering
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/rect_map.png}
+        \caption{Rect map (baseline)}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/line_map.png}
+        \caption{Line map}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \includegraphics[width=\textwidth]{figures/plus_map.png}
+        \caption{Plus map}
+    \end{subfigure}
+    \caption{The three maps used in the experiments.}
+    \label{fig:maps}
+\end{figure}
+
+%------------------------------------------------
+
+\section{Experimentation} \label{sec:experimentation}
+
+%------------------------------------------------
+
+\section{Conclusion} \label{sec:conclusion}
+
+
+\end{document}
