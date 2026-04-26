@@ -126,6 +126,15 @@ class Controller(Node):
             obstacle.name: obstacle for obstacle in self.obstacles
         }
 
+        # Stuck detection & escape
+        self._stuck_ref_time: float = 0.0
+        self._stuck_ref_pos: tuple = (0.0, 0.0)
+        self._stuck_timeout: float = 5.0   # s without moving -> escape
+        self._stuck_dist: float = 0.4      # m minimum displacement
+        self._escape_reverse_iters: int = 0  # phase 1: reverse
+        self._escape_spin_speed: float = 0.0  # phase 2: random spin
+        self._escape_spin_iters: int = 35     # phase 2 duration
+
         # ---------------------------
         # Experiment tracking
         # ---------------------------
@@ -234,6 +243,9 @@ class Controller(Node):
         self.active_obstacles = {o.name: o for o in self.obstacles}
         self.rotation_iterations_left = 0
         self.run_start_time = self.get_clock().now().nanoseconds / 1e9
+        self._stuck_ref_time = self.run_start_time
+        self._stuck_ref_pos = (self.pose.x, self.pose.y)
+        self._escape_reverse_iters = 0
         self.resetting = False
         self.get_logger().info(
             f"[Config {self.config_idx + 1}/{len(EXPERIMENT_CONFIGS)}, "
@@ -455,6 +467,29 @@ class Controller(Node):
             f"Pose -> x: {self.pose.x:.2f}, y: {self.pose.y:.2f}, theta: {self.pose.theta:.2f}"
         )
 
+    def _check_stuck(self) -> bool:
+        """Returns True and triggers reverse+spin escape if the robot hasn't moved enough."""
+        now = self.get_clock().now().nanoseconds / 1e9
+        if now - self._stuck_ref_time < self._stuck_timeout:
+            return False
+
+        moved = math.hypot(
+            self.pose.x - self._stuck_ref_pos[0],
+            self.pose.y - self._stuck_ref_pos[1],
+        )
+        self._stuck_ref_time = now
+        self._stuck_ref_pos = (self.pose.x, self.pose.y)
+
+        if moved < self._stuck_dist:
+            self._escape_reverse_iters = 20
+            self._escape_spin_speed = random.uniform(-math.pi, math.pi)
+            self.get_logger().warn(
+                f"Stuck (moved {moved:.2f} m in {self._stuck_timeout:.0f}s) "
+                f"→ reversing then spinning"
+            )
+            return True
+        return False
+
     def lidar_callback(self, scan: LaserScan) -> None:
         if self.resetting:
             return
@@ -466,13 +501,27 @@ class Controller(Node):
 
         exp = self._current_exp()
 
+        # Phase 1: reverse to physically leave the stuck spot
+        if self._escape_reverse_iters > 0:
+            self._escape_reverse_iters -= 1
+            self.publish_speed(-exp.linear_speed, 0.0)
+            if self._escape_reverse_iters == 0:
+                # switch to phase 2: random spin
+                self.angular_speed = self._escape_spin_speed
+                self.rotation_iterations_left = self._escape_spin_iters
+            return
+
         if self.rotation_iterations_left == 0:
+            self._check_stuck()
+            if self._escape_reverse_iters > 0:
+                return  # escape just triggered, handle next callback
+
             front_index: int = len(scan.ranges) // 2
             front_distance: float = self.get_mean_range(
                 list(scan.ranges), front_index, window=exp.mean_window)
 
             if front_distance < self.config.min_distance:
-                if exp.nav_mode == "random":
+                if exp.nav_mode == "basic":
                     self.start_random_rotation()
                 else:
                     self.start_heuristic_rotation(scan)
