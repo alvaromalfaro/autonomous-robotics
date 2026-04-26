@@ -25,16 +25,19 @@ def generate_launch_description():
             # Flatland parameters.
             # You can either change these values directly here or override them in the launch command default values. Example:
             #   ros2 launch serp_teleop serp_teleop.launch.py update_rate:="20.0"
-            DeclareLaunchArgument(name="world_name", default_value="world.yaml"),
+            DeclareLaunchArgument(
+                name="world_name", default_value="world.yaml"),
             DeclareLaunchArgument(name="update_rate", default_value="100.0"),
             DeclareLaunchArgument(name="step_size", default_value="0.01"),
             DeclareLaunchArgument(name="show_viz", default_value="true"),
             DeclareLaunchArgument(name="viz_pub_rate", default_value="30.0"),
             DeclareLaunchArgument(name="use_sim_time", default_value="true"),
             DeclareLaunchArgument(name="map_name", default_value="default"),
-            DeclareLaunchArgument(name="output_csv", default_value="~/homework4_results.csv"),
+            DeclareLaunchArgument(
+                name="output_csv", default_value=f"./homework4_{map_name}_results.csv"),
 
-            SetEnvironmentVariable(name="ROSCONSOLE_FORMAT", value="[${severity} ${time} ${logger}]: ${message}"),
+            SetEnvironmentVariable(
+                name="ROSCONSOLE_FORMAT", value="[${severity} ${time} ${logger}]: ${message}"),
 
             # **** Nodes launched by this file ****
             # launch flatland server
@@ -74,12 +77,13 @@ def generate_launch_description():
                 arguments=["0", "0", "0", "0", "0", "0", "map", "odom"],
             ),
 
-            # visualisation 
+            # visualisation
             Node(
                 name="rviz",
                 package="rviz2",
                 executable="rviz2",
-                arguments=["-d", PathJoinSubstitution([pkg_share, "rviz/robot_navigation.rviz"])],
+                arguments=[
+                    "-d", PathJoinSubstitution([pkg_share, "rviz/robot_navigation.rviz"])],
                 parameters=[{"use_sim_time": use_sim_time}],
                 condition=conditions.IfCondition(show_viz),
             ),

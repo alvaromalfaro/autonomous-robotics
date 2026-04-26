@@ -58,7 +58,7 @@ one. This function applies a two-condition check:
     \item \textbf{Proximity filter}: computes the Euclidean distance from the robot pose to the
           obstacle's known position. If it exceeds the \texttt{obstacle\_detection\_distance}
           threshold (1.0 m), the check is skipped immediately.
-    \item \textbf{LAser confirmation}: converts the vector to the obstacle into a robot-relative
+    \item \textbf{Laser confirmation}: converts the vector to the obstacle into a robot-relative
           angle (\texttt{global\_angle - robot\_theta}, normalized to $[-\pi, \pi]$), maps the angle
           to a laser scan index via \texttt{angle\_to\_scan\_index}, then reads the average laser
           range at that index using \texttt{get\_mean\_range} (a windowed average over $\pm$
@@ -94,6 +94,11 @@ negative (right) otherwise.
 In both modes, \texttt{rotation\_iterations\_left} is set to \texttt{random\_rotation\_iterations}
 (10) and counted down each callback tick, during which the robot rotates in place.
 
+Additionally, a stuck detection mechanism was added to handle cases where the robot might get
+trapped in a corner or against a wall. Every 5 seconds, the controller checks whether the robot has
+moved at least $0.4$ m. If not, it triggers a two-phase escape: first, it reverses for 20 callback
+ticks, and then it performs a random spin for 35 ticks before resuming normal navigation.
+
 Finally, the key parameters here are the \texttt{min\_distance} threshold for obstacle avoidance,
 which is set to $0.8$m; the \texttt{random\_rotation\_iterations}, which determines how long the
 robot rotates, set to $10$ iterations; and the turn speed fixed at $1.5$ rad/s in the improved mode.
@@ -114,15 +119,13 @@ maps:
     \item \textbf{Line map}: adds a thin vertical wall near the center ($6$ pixels wide $\times$
           $40$ pixels tall $= 0.3 \times 2.0$ m). It creates a partial barrier that splits the arena
           symmetrically.
-    \item \textbf{Plus map}: adds a plus-shaped wall centered at world origin ($0,0$), with arms
-          of 25 pixels ($1.25$ m) and thickness of 8 pixels ($0.4$ m). It divides the arena into
-          four quadrants, forcing the robot to navigate around it.
+    \item \textbf{TP map}: two offset rectangular pillars placed diagonally across the arena.
 \end{itemize}
 
-Both custom maps are designed to avoid the four goal positions ($\pm 2.5, \pm 1.5$), so goals remain
-reachable in all configurations. Each map has its own \texttt{world\_*.yaml} and \texttt{*\_map.yaml}
-and can be selected at launch via the \texttt{world\_name} argument. The three maps are shown in
-Figure \ref{fig:maps}.
+The three maps are shown in Figure \ref{fig:maps}. Both custom maps are designed to avoid the four
+goal positions ($\pm 2.5, \pm 1.5$), so goals remain reachable in all configurations. Each map has
+its own \texttt{world\_*.yaml} and \texttt{*\_map.yaml} and can be selected at launch via the
+\texttt{world\_name} argument.
 
 \begin{figure}
     \centering
@@ -137,8 +140,8 @@ Figure \ref{fig:maps}.
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.32\textwidth}
-        \includegraphics[width=\textwidth]{figures/plus_map.png}
-        \caption{Plus map}
+        \includegraphics[width=\textwidth]{figures/tp_map.png}
+        \caption{TP map}
     \end{subfigure}
     \caption{The three maps used in the experiments.}
     \label{fig:maps}
