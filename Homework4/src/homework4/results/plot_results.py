@@ -147,3 +147,43 @@ fig.tight_layout()
 fig.savefig(os.path.join(FIGURES_DIR, "plot_map_comparison.png"), dpi=150)
 plt.close(fig)
 print("Saved plot_map_comparison.png")
+
+
+# ── LaTeX summary table ────────────────────────────────────────────────────────
+summary = (
+    df.groupby(["map_name", "nav_mode", "linear_speed", "mean_window"])["total_time"]
+    .mean()
+    .round(2)
+    .reset_index()
+)
+
+table_path = os.path.join(FIGURES_DIR, "results_table.tex")
+with open(table_path, "w") as f:
+    for map_name in MAPS:
+        label = MAP_LABELS[map_name]
+        f.write("\\begin{table}[h]\n")
+        f.write("    \\centering\n")
+        f.write("    \\begin{tabular}{llcc}\n")
+        f.write("        \\hline\n")
+        f.write("        \\textbf{Nav mode} & \\textbf{Speed (m/s)} & "
+                "\\textbf{Window} & \\textbf{Mean time (s)} \\\\\n")
+        f.write("        \\hline\n")
+
+        subset = summary[summary["map_name"] == map_name].sort_values(
+            ["nav_mode", "linear_speed", "mean_window"]
+        )
+        prev_nav = None
+        for _, row in subset.iterrows():
+            nav = row["nav_mode"].capitalize()
+            nav_cell = nav if nav != prev_nav else ""
+            prev_nav = nav
+            f.write(f"        {nav_cell} & {row['linear_speed']:.1f} & "
+                    f"{int(row['mean_window'])} & {row['total_time']:.2f} \\\\\n")
+
+        f.write("        \\hline\n")
+        f.write("    \\end{tabular}\n")
+        f.write(f"    \\caption{{Mean completion time per configuration --- {label}.}}\n")
+        f.write(f"    \\label{{tab:{map_name}}}\n")
+        f.write("\\end{table}\n\n")
+
+print(f"Saved results_table.tex")

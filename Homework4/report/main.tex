@@ -151,9 +151,117 @@ its own \texttt{world\_*.yaml} and \texttt{*\_map.yaml} and can be selected at l
 
 \section{Experimentation} \label{sec:experimentation}
 
+The experiments were conducted across \textbf{12 configurations}, combining 2 navigation modes
+(basic and improved), 3 linear speeds ($0.5$, $1.0$ and $2.0$ m/s), and 2 laser window sizes ($2$
+and $4$), each repeated \textbf{10 times per map}. The same set of configurations was tested on
+three maps: the baseline rect map, and the two custom maps (line and tp). The metric recorded is the
+total time to detect and remove all four goals, defined as the elapsed time from run start to the
+last goal removal. Between runs, the robot and all goals are automatically reset to their initial
+positions. The results are summarized in Tables \ref{tab:rect_map}, \ref{tab:line_map} and
+\ref{tab:x_map}.
+
+\input{figures/results_table.tex}
+
+\subsection{Effect of linear speed}
+
+Linear speed is by far the dominant factor across all configurations and maps. At $2.0$ m/s the
+robot detects all goals in less than $100$ seconds consistently, while at $0.5$ m/s it takes between
+$80$ and $250$ seconds, depending on the map. The boxplot in Figure \ref{fig:boxplot} confirms that
+variance at $2.0$ m/s is essentially zero or very low, which might be due to the fact that the robot
+follows the same deterministic path every run, while at $0.5$ m/s it is very high, especially on the
+tp map, maybe because the robot has to do more obstacle avoidance maneuvers, following different
+paths each time. At $1.0$ m/s results are intermediate but with notable variance depending on the
+window size, as discussed in Section \ref{sec:window}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/plot_boxplot_speed.png}
+    \caption{Completion time distribution by linear speed across the three maps.}
+    \label{fig:boxplot}
+\end{figure}
+
+\subsection{Effect of navigation mode}
+
+The improved navigation mode, which selects the direction with the most free space instead of
+turning randomly, shows surprisignly \textbf{little improvement} over the basic mode. As shown in
+Figure \ref{fig:navmode}, at $2.0$ m/s both modes produce identical results across all maps; the
+robot is fast enough to reach all goals via the same deterministic path regardless of how it turns.
+At lower speeds, the differences are small and inconsistent; in some configurations the improved
+mode is marginally better, while in others the random mode performs equally well or even slightly
+better. This suggests that in relatively simple environments, like an open arena with few obstacles,
+most directions offer \textit{similar free space} when an obstacle is encountered, giving the
+heuristic \textit{little to exploit} over a random choice.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/plot_nav_mode_vs_speed.png}
+    \caption{Mean completion time: basic vs improved navigation mode.}
+    \label{fig:navmode}
+\end{figure}
+
+\subsection{Effect of laser window size} \label{sec:window}
+
+The laser window size has a more notable effect than the navigation mode, particularly at $1.0$ m/s.
+As shown in Figure \ref{fig:window}, with $\text{window}=4$ at $1.0$ m/s the robot takes around $84$
+seconds consistently across all 10 runs on the rect map, with essentially zero variance. With
+$\text{window}=2$ at the same speed, completion times drop to a $20$--$60$ second range with much
+higher variance. This is a counterintuitive result, as one would expect that a larger averaging
+window should reduce sensor noise, leading to more reliable obstacle detection and better navigation
+decisions. Instead, it causes the robot to follow a path that happens to be suboptimal. At $2.0$ m/s
+the window has no effect since the robot is fast enough to always follow the same path, while at
+$0.5$ m/s both windows produce similarly high and variable completion times.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth]{figures/plot_window_vs_speed.png}
+    \caption{Mean completion time: effect of laser window size.}
+    \label{fig:window}
+\end{figure}
+
+\subsection{Map comparison}
+
+At $2.0$ m/s the rect and line maps show identical completion times, while the tp map is slightly
+higher, reaching around a minute on average. This is expected since the tp map has two obstacles
+that may force the robot to change its path more often, while the line map has only one thin wall
+that can be easily circumvented. At lower speeds, the maps diverge more significantly. The line and
+tp maps introduce additional variance compared to the rect map, as the robot must navigate around
+the internal obstacles, following different paths each run. The tp map is the hardest at $0.5$ m/s,
+producing the highest and most variable completion times across all configurations.
+
+Overall, the map complexity has a secondary effect compared to linear speed, but it amplifies the
+variance already observed at lower speeds. Figure \ref{fig:mapcomp} summarises the mean completion
+time per map and speed.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\textwidth]{figures/plot_map_comparison.png}
+    \caption{Mean completion time across maps by linear speed.}
+    \label{fig:mapcomp}
+\end{figure}
+
 %------------------------------------------------
 
 \section{Conclusion} \label{sec:conclusion}
 
+This report presented the development and evaluation of a reactive navigation system for a simulated
+mobile robot in the Flatland environment under ROS2. The system was built incrementally, starting
+froim a baseline random-turn controller, a laser-based goal detector was added, the navigation
+strategy was improved with a free-space heuristic, and the whole system was tested across multiple
+configurations and three maps of increasing complexity.
+
+The experiments revealed that linear speed is the dominant factor in performance, with the robot
+completing all goals in less than a minute at $2.0$ m/s regardless of the map or navigation mode.
+The improved navigation mode showed little to no advantage over the basic one, which can be
+attributed to the relative openness of the arenas tested, where most directions offer similar free
+space when an obstacle is encountered, leaving the heuristic little to exploit. A more unexpected
+finding was the deterministic loop caused by the larger laser window size at $1.0$ m/s, where the
+robot consistently followed the same suboptimal path, while the smaller window introduced enough
+variability to allow for faster completion times in some runs. The tp map proved to be the most
+challenging scenario, particularly for the basic mode at low speeds.
+
+As a final remark, there is one aspect that could be further explored or improved with additional
+time, that is testing on more complex maps, such as narrow corridors or maze-like layouts,
+would create situations where the free-space heuristic has a real advantage over random turning,
+allowing a fairer comparison between the two navigation modes.
 
 \end{document}
