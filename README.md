@@ -8,3 +8,8 @@
     - `standard/`: baseline PD controller using static, hand-tuned gains.
     - `advanced/`: enhanced controller integrating the Twiddle algorithm for real-time dynamic hyperparameter optimization.
     - `report/`: technical report.
+
+- `Homework4/` (ROS 2 package): implementation of a **reactive navigation system** for a simulated mobile robot in the Flatland 2D environment. The robot navigates a bounded arena using a 360° LiDAR sensor, detects and removes four goal objects via laser and odometry data, and avoids obstacles through two navigation strategies. The system was evaluated across 12 configurations (2 navigation modes × 3 linear speeds × 2 laser window sizes), repeated 10 times on three maps of increasing complexity. The directory is structured as follows:
+
+    - `src/homework4/`: ROS 2 package containing the controller node, launch file, world definitions, map image generator, experiment results, and plotting script.
+    - `report/`: technical report.
