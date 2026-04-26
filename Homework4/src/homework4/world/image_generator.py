@@ -16,7 +16,7 @@ draw.rectangle([width_px - wall_thickness, 0, width_px, height_px], fill=0)
 
 img.save("rect_map.png")
 
-# ── plus_map ──────────────────────────────────────────────
+# ── two offset pillars ────────────────────────────────────
 img = Image.new("L", (width_px, height_px), 255)
 draw = ImageDraw.Draw(img)
 
@@ -25,15 +25,10 @@ draw.rectangle([0, height_px - wall_thickness, width_px, height_px], fill=0)
 draw.rectangle([0, 0, wall_thickness, height_px], fill=0)
 draw.rectangle([width_px - wall_thickness, 0, width_px, height_px], fill=0)
 
-cx, cy = width_px // 2, height_px // 2  # (100, 60)
-arm = 25
-thickness = 8
-half_t = thickness // 2
+draw.rectangle([50, 36, 88, 54], fill=0)
+draw.rectangle([112, 66, 150, 84], fill=0)
 
-draw.rectangle([cx - arm, cy - half_t, cx + arm, cy + half_t], fill=0)
-draw.rectangle([cx - half_t, cy - arm, cx + half_t, cy + arm], fill=0)
-
-img.save("plus_map.png")
+img.save("tp_map.png")
 
 # ── line_map ──────────────────────────────────────────────
 img = Image.new("L", (width_px, height_px), 255)
